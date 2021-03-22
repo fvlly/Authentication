@@ -5,7 +5,11 @@ const ejs = require("ejs")
 const mongoose = require("mongoose")
 const encrypt = require("mongoose-encryption")
 // level 3 hashing
-const md5 = require("md5")
+// const md5 = require("md5")
+// level 4 salting and hashing 
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 
 
 const app = express()
@@ -40,32 +44,38 @@ app.get("/login",(req,res)=>{
 
 app.post("/register",(req,res)=>{
 
-    const newUser = new User( {
-        email:req.body.username,
-        password:md5(req.body.password) 
-    })
+    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+        // Store hash in your  usersDB.
+        const newUser = new User( {
+            email:req.body.username,
+            password:hash
+        })
+    
+        newUser.save((err)=>{
+            if (!err) {
+                res.render("secrets")
+            }
+        })
+        
+    });
 
-    newUser.save((err)=>{
-        if (!err) {
-            res.render("secrets")
-        }
-    })
     
 })
 
 
 app.post("/login",(req,res)=>{
     const username = req.body.username
-    const password = md5(req.body.password) 
+    const password = req.body.password 
 
     User.findOne({email: username},(err,foundUser)=>{
         if (err) {
             console.log(err);
         } else {
             if (foundUser) {
-                if (foundUser.password === password) {
+                bcrypt.compare(password, foundUser.password, function(err, result) {
+                    // result == true
                     res.render("secrets")
-                }
+                });
             }
         }
 
